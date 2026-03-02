@@ -22,11 +22,12 @@ func PrintMeetings(meetings []Meeting, asJSON bool) error {
 
 	table := NewTable("ID", "TITLE", "DATE", "TIME")
 	for _, m := range meetings {
+		local := m.StartTime.Local()
 		table.AddRow(
 			TruncateID(m.ID),
 			Truncate(m.Title, 50),
-			formatDate(m.StartTime),
-			m.StartTime.Format("15:04"),
+			formatDate(local),
+			local.Format("15:04"),
 		)
 	}
 	table.Render()
@@ -49,7 +50,7 @@ func PrintMeetingDetail(meeting *MeetingDetail, asJSON bool) error {
 
 	if !meeting.StartTime.IsZero() {
 		_, _ = labelStyle.Print("Date:      ")
-		fmt.Println(meeting.StartTime.Format("2 Jan 2006 15:04"))
+		fmt.Println(meeting.StartTime.Local().Format("2 Jan 2006 15:04"))
 	}
 
 	if len(meeting.Attendees) > 0 {
