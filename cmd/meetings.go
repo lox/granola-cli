@@ -16,8 +16,8 @@ type MeetingsCmd struct {
 
 type MeetingsListCmd struct {
 	Range string `help:"Time range: this_week, last_week, last_30_days, or custom" short:"r" default:"this_week" enum:"this_week,last_week,last_30_days,custom"`
-	Start string `help:"Custom range start (ISO date, requires --range=custom)" short:"s"`
-	End   string `help:"Custom range end (ISO date, requires --range=custom)" short:"e"`
+	From  string `name:"from" aliases:"start" help:"Custom range start (ISO date)" short:"s"`
+	To    string `name:"to" aliases:"end" help:"Custom range end (ISO date)" short:"e"`
 	JSON  bool   `help:"Output as JSON" short:"j"`
 }
 
@@ -32,16 +32,9 @@ func (c *MeetingsListCmd) Run(ctx *Context) error {
 
 	bgCtx := context.Background()
 
-	args := map[string]any{
-		"time_range": c.Range,
-	}
-	if c.Range == "custom" {
-		if c.Start != "" {
-			args["custom_start"] = c.Start
-		}
-		if c.End != "" {
-			args["custom_end"] = c.End
-		}
+	args, err := c.toolArgs()
+	if err != nil {
+		return err
 	}
 
 	result, err := client.CallToolText(bgCtx, "list_meetings", args)
@@ -57,6 +50,36 @@ func (c *MeetingsListCmd) Run(ctx *Context) error {
 	}
 
 	return output.PrintMeetings(meetings, ctx.JSON)
+}
+
+func (c *MeetingsListCmd) toolArgs() (map[string]any, error) {
+	hasCustomBounds := c.From != "" || c.To != ""
+	timeRange := c.Range
+	if timeRange == "" {
+		timeRange = "this_week"
+	}
+
+	if hasCustomBounds {
+		if timeRange == "this_week" {
+			timeRange = "custom"
+		} else if timeRange != "custom" {
+			return nil, fmt.Errorf("--from/--to can't be used with --range=%s", c.Range)
+		}
+	}
+
+	args := map[string]any{
+		"time_range": timeRange,
+	}
+	if timeRange == "custom" {
+		if c.From != "" {
+			args["custom_start"] = c.From
+		}
+		if c.To != "" {
+			args["custom_end"] = c.To
+		}
+	}
+
+	return args, nil
 }
 
 type MeetingsViewCmd struct {
